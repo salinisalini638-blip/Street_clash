@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#10131c">
+<title>Street Clash — 2D Fighting Game</title>
+<style>
+:root{--bg:#10131c;--panel:#202638;--text:#f4f7ff;--accent:#ffbd4a;--cyan:#5be7ff;--red:#ff5f70}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;user-select:none}
+body{display:flex;align-items:center;justify-content:center}
+#gameWrap{position:relative;width:100vw;height:100dvh;max-width:1000px;max-height:700px;background:#141b2b;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:flex-start;gap:10px;pointer-events:none}
+.fighterHud{width:42%;min-width:0}
+.fighterHud.right{text-align:right;margin-left:auto}
+.name{font-size:12px;font-weight:900;letter-spacing:1.5px;text-shadow:0 2px 4px #000}
+.healthOuter{height:16px;background:#111827;border:2px solid #eef2ff;border-radius:5px;overflow:hidden;margin-top:5px;box-shadow:0 3px 8px #0008}
+.health{height:100%;width:100%;background:linear-gradient(90deg,#35e58c,#b6ff75);transition:width .12s}
+.right .health{margin-left:auto;background:linear-gradient(90deg,#ff9a61,#ff4f6d)}
+#roundTag{font-size:11px;font-weight:900;letter-spacing:1px;background:#10131ccc;border:1px solid #ffffff40;border-radius:9px;padding:7px 9px;white-space:nowrap}
+#message{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);font-size:clamp(28px,7vw,58px);font-weight:1000;letter-spacing:2px;text-align:center;text-shadow:0 5px 0 #000,0 0 22px #0009;white-space:nowrap;pointer-events:none}
+#subMessage{display:block;font-size:12px;letter-spacing:1px;margin-top:8px}
+#topButtons{position:absolute;top:68px;left:12px;right:12px;display:flex;justify-content:center;gap:8px}
+.smallBtn{border:1px solid #ffffff38;background:#111827c9;color:white;border-radius:9px;padding:7px 11px;font-weight:800;font-size:11px}
+.controls{position:absolute;left:0;right:0;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:flex-end;padding:0 14px;gap:8px}
+.pad{display:flex;gap:8px;align-items:flex-end}
+.ctrl{width:clamp(48px,14vw,68px);height:clamp(48px,14vw,68px);border-radius:18px;border:2px solid #ffffff44;background:#1a2238dd;color:white;font-weight:1000;font-size:clamp(16px,4vw,22px);box-shadow:0 5px 0 #090d17;display:flex;align-items:center;justify-content:center;touch-action:none}
+.ctrl:active,.ctrl.active{transform:translateY(3px);box-shadow:0 2px 0 #090d17;background:#344361}
+.ctrl.attack{background:#a92f4be8;border-color:#ff8794;width:clamp(56px,16vw,76px);height:clamp(56px,16vw,76px);border-radius:50%}
+.ctrl.kick{background:#b66b18e8;border-color:#ffd083;width:clamp(56px,16vw,76px);height:clamp(56px,16vw,76px);border-radius:50%}
+.ctrl.jump{background:#176c8ce8;border-color:#7ceaff;border-radius:50%}
+#footerHint{position:absolute;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 82px);left:0;right:0;text-align:center;color:#dbe5ffb5;font-size:10px;pointer-events:none}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(#0b1020a8,#0b1020df);padding:22px}
+#menuCard{width:min(420px,100%);padding:25px 22px;border:1px solid #ffffff2c;border-radius:24px;background:#171e30f5;box-shadow:0 20px 70px #0009;text-align:center}
+#menuCard h1{font-size:clamp(30px,8vw,48px);line-height:1;margin:0 0 8px;letter-spacing:1px}
+#menuCard h1 span{color:var(--accent)}
+#menuCard p{color:#c8d1e8;line-height:1.5;font-size:14px}
+#startBtn{width:100%;border:0;border-radius:13px;background:var(--accent);color:#1b1a20;font-size:16px;font-weight:1000;padding:15px;margin-top:9px}
+#difficulty{display:flex;gap:8px;margin-top:12px}
+#difficulty button{flex:1;border:1px solid #ffffff30;background:#242e45;color:#fff;border-radius:10px;padding:10px;font-weight:800}
+#difficulty button.selected{background:#e8b348;color:#171923;border-color:#ffe19a}
+.hidden{display:none!important}
+@media (orientation:landscape) and (max-height:500px){
+ .hud{top:7px}.healthOuter{height:13px}.name{font-size:10px}#topButtons{top:47px}.ctrl{width:50px;height:50px}.ctrl.attack,.ctrl.kick{width:56px;height:56px}#footerHint{bottom:74px}#message{top:28%}
+}
+</style>
+</head>
+<body>
+<div id="gameWrap">
+ <canvas id="game" aria-label="Street Clash fighting game"></canvas>
+ <div class="hud">
+  <div class="fighterHud"><div class="name">HUGO</div><div class="healthOuter"><div id="pHealth" class="health"></div></div></div>
+  <div id="roundTag">ROUND 1</div>
+  <div class="fighterHud right"><div class="name">RIVAL</div><div class="healthOuter"><div id="eHealth" class="health"></div></div></div>
+ </div>
+ <div id="topButtons"><button class="smallBtn" id="pauseBtn">Ⅱ PAUSE</button><button class="smallBtn" id="restartBtn">↻ RESTART</button></div>
+ <div id="message">READY?</div>
+ <div id="footerHint">MOVE • JUMP • PUNCH • KICK</div>
+ <div class="controls">
+  <div class="pad">
+   <button class="ctrl" data-hold="left" aria-label="Move left">◀</button>
+   <button class="ctrl" data-hold="right" aria-label="Move right">▶</button>
+  </div>
+  <div class="pad">
+   <button class="ctrl jump" data-action="jump" aria-label="Jump">⬆</button>
+   <button class="ctrl attack" data-action="punch" aria-label="Punch">P</button>
+   <button class="ctrl kick" data-action="kick" aria-label="Kick">K</button>
+  </div>
+ </div>
+ <div id="overlay">
+  <div id="menuCard">
+   <h1>STREET <span>CLASH</span></h1>
+   <p>A pocket-sized 2D fighter. Beat your rival using punches, kicks, and well-timed jumps.</p>
+   <p><b>Controls:</b> ◀ ▶ move · ⬆ jump · P punch · K kick</p>
+   <div style="font-size:12px;font-weight:900;text-align:left;margin-top:12px">RIVAL DIFFICULTY</div>
+   <div id="difficulty">
+    <button data-diff="easy">EASY</button><button data-diff="normal" class="selected">NORMAL</button><button data-diff="hard">HARD</button>
+   </div>
+   <button id="startBtn">START FIGHT</button>
+   <p style="font-size:11px;margin-bottom:0">Works in your mobile browser. Best played in landscape.</p>
+  </div>
+ </div>
+</div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const pHealth=document.getElementById('pHealth'),eHealth=document.getElementById('eHealth');
+const message=document.getElementById('message'),overlay=document.getElementById('overlay');
+const startBtn=document.getElementById('startBtn'),pauseBtn=document.getElementById('pauseBtn'),restartBtn=document.getElementById('restartBtn');
+let W=800,H=450,dpr=1,ground=360,last=0,elapsed=0,gameState='menu',difficulty='normal',round=1;
+const keys={left:false,right:false};
+const particles=[];
+function resize(){
+ const r=document.getElementById('gameWrap').getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,2);
+ W=Math.max(320,r.width);H=Math.max(300,r.height);canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+ ground=H*.76;
+}
+window.addEventListener('resize',resize);resize();
+function fighter(x,player){
+ return {x,y:ground,vy:0,hp:100,maxHp:100,face:player?1:-1,player,walk:0,attack:null,attackTime:0,attackHit:false,stun:0,flash:0,block:0,ko:false};
+}
+let player,enemy;
+function reset(){
+ player=fighter(W*.28,true);enemy=fighter(W*.72,false);
+ player.y=enemy.y=ground;particles.length=0;elapsed=0;round=1;
+ pHealth.style.width=eHealth.style.width='100%';message.innerHTML='READY?<span id="subMessage">FIGHT!</span>';
+ gameState='countdown';overlay.classList.add('hidden');
+ setTimeout(()=>{if(gameState==='countdown'){gameState='playing';message.textContent='FIGHT!';setTimeout(()=>{if(gameState==='playing')message.textContent=''},650)}},700);
+}
+function start(){reset();last=performance.now();requestAnimationFrame(loop)}
+function restartMenu(){gameState='menu';overlay.classList.remove('hidden');message.textContent='';}
+function setMessage(main,sub=''){message.innerHTML=main+(sub?'<span id="subMessage">'+sub+'</span>':'')}
+function action(type){
+ if(gameState!=='playing'||player.stun>0||player.ko)return;
+ if(type==='jump'){if(player.y>=ground-1){player.vy=-H*.75;spawn(player.x,ground-15,'#74eaff',5)}return}
+ if(player.attack)return;
+ player.attack=type;player.attackTime=type==='punch'?.24:.38;player.attackHit=false;
+}
+function spawn(x,y,color,n=7){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*210,vy:(Math.random()-.7)*170,life:.25+Math.random()*.3,color,r:2+Math.random()*3})}
+function hit(attacker,defender,type){
+ const range=type==='punch'?W*.115:W*.15;
+ const dx=(defender.x-attacker.x)*attacker.face;
+ if(dx>0&&dx<range&&Math.abs((defender.y-30)-(attacker.y-30))<H*.17){
+  let dmg=type==='punch'?7:12;
+  if(defender.block>0)dmg=Math.ceil(dmg*.3);
+  defender.hp=Math.max(0,defender.hp-dmg);defender.stun=defender.block>0?.12:.24;
+  defender.flash=.14;defender.x+=attacker.face*(defender.block>0?5:W*.025);
+  spawn(defender.x,defender.y-H*.16,defender.block>0?'#75eaff':'#ffdf81',8);
+  if(defender.hp<=0){defender.ko=true;finish(attacker.player)}
+ }
+}
+function finish(playerWon){
+ gameState='over';setMessage(playerWon?'YOU WIN!':'KNOCKOUT!',playerWon?'RIVAL DEFEATED':'TRY AGAIN — YOU GOT THIS');
+ setTimeout(()=>{if(gameState==='over'){overlay.classList.remove('hidden');document.querySelector('#menuCard h1').innerHTML=playerWon?'NICE <span>FIGHT!</span>':'NEXT <span>ROUND</span>';document.querySelector('#menuCard p').textContent=playerWon?'You beat your rival! Ready for another fight?':'Practice your timing and challenge the rival again.';startBtn.textContent='FIGHT AGAIN'}},950);
+}
+function updateFighter(f,dt){
+ if(f.stun>0)f.stun=Math.max(0,f.stun-dt);
+ if(f.flash>0)f.flash-=dt;
+ if(f.attack){f.attackTime-=dt;if(!f.attackHit&&f.attackTime<(f.attack==='punch'?.13:.22)){hit(f,f===player?enemy:player,f.attack);f.attackHit=true}if(f.attackTime<=0)f.attack=null}
+ f.vy+=H*1.85*dt;f.y+=f.vy*dt;if(f.y>ground){f.y=ground;f.vy=0}
+ if(f.player){
+  if(f.stun<=0&&!f.attack){let dir=(keys.right?1:0)-(keys.left?1:0);f.x+=dir*W*.42*dt;if(dir)f.walk+=dt*12}
+ }else{
+  if(f.stun<=0&&!f.attack){
+   const dx=player.x-f.x,dist=Math.abs(dx);f.face=dx<0?-1:1;
+   const speed=(difficulty==='easy'?.20:difficulty==='hard'?.34:.27)*W;
+   if(dist>W*.14)f.x+=Math.sign(dx)*speed*dt;
+   else if(Math.random()<dt*(difficulty==='hard'?2.5:1.4)) {f.attack=Math.random()<.58?'punch':'kick';f.attackTime=f.attack==='punch'?.25:.39;f.attackHit=false}
+   f.block=dist<W*.13&&Math.random()<(difficulty==='hard'?.55:difficulty==='normal'?.24:.08)?.18:0;
+  }
+ }
+ f.x=Math.max(W*.07,Math.min(W*.93,f.x));
+}
+function update(dt){
+ if(gameState==='playing'){
+  updateFighter(player,dt);updateFighter(enemy,dt);
+  player.face=player.x<enemy.x?1:-1;
+  pHealth.style.width=player.hp+'%';eHealth.style.width=enemy.hp+'%';
+ }
+ for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=260*dt;if(p.life<=0)particles.splice(i,1)}
+}
+function roundedRect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
+function drawBackground(){
+ const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#111b35');sky.addColorStop(1,'#394565');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ // moon and stars
+ ctx.fillStyle='#e5edff';ctx.globalAlpha=.75;ctx.beginPath();ctx.arc(W*.82,H*.16,Math.min(W,H)*.035,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+ for(let i=0;i<35;i++){let x=(i*137%997)/997*W,y=(i*71%199)/199*H*.42;ctx.fillStyle='#d9e7ff';ctx.globalAlpha=.3+(i%4)*.12;ctx.fillRect(x,y,2,2)}ctx.globalAlpha=1;
+ // city silhouettes
+ for(let i=0;i<12;i++){let bw=W/9+((i*37)%35),x=i*W/10-(bw*.2),bh=H*(.18+((i*17)%25)/100);ctx.fillStyle=i%2?'#202b46':'#1a253d';ctx.fillRect(x,ground-bh-12,bw,bh+12);for(let wy=ground-bh+10;wy<ground-18;wy+=18)for(let wx=x+8;wx<x+bw-5;wx+=15){ctx.fillStyle=(Math.floor(wx+wy+i)%3===0)?'#e6b85b55':'#82c8ff30';ctx.fillRect(wx,wy,5,7)}}
+ ctx.fillStyle='#171c2a';ctx.fillRect(0,ground,W,H-ground);
+ ctx.fillStyle='#30394e';ctx.fillRect(0,ground,W,5);
+ ctx.strokeStyle='#f3c76b66';ctx.lineWidth=3;ctx.setLineDash([24,22]);ctx.beginPath();ctx.moveTo(0,ground+H*.13);ctx.lineTo(W,ground+H*.13);ctx.stroke();ctx.setLineDash([]);
+ for(let i=0;i<6;i++){ctx.fillStyle='#ffda7540';ctx.fillRect(i*W/5,ground+10,2,H*.04)}
+}
+function drawFighter(f){
+ const scale=Math.min(W/800,H/450),x=f.x,y=f.y;
+ ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+ // shadow
+ ctx.fillStyle='#070b13aa';ctx.beginPath();ctx.ellipse(0,0,26,7,0,0,Math.PI*2);ctx.fill();
+ let skin=f.player?'#d79a70':'#a96f53',shirt=f.player?'#24c6dc':'#ed4c68',pants=f.player?'#273c75':'#4b304d',edge='#101522';
+ if(f.flash>0){skin='#fff1c9';shirt='#fff1c9';pants='#fff1c9'}
+ // facing direction local coordinates
+ ctx.scale(f.face,1);
+ // legs
+ const moving=(keys.left||keys.right)&&f.player&&f.y>=ground-1;
+ const stride=moving?Math.sin(f.walk)*8:0;
+ ctx.strokeStyle=edge;ctx.lineWidth=10;ctx.lineCap='round';
+ ctx.beginPath();ctx.moveTo(-7,-27);ctx.lineTo(-10+stride,-5);ctx.lineTo(-16+stride,-1);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(7,-27);ctx.lineTo(10-stride,-6);ctx.lineTo(17-stride,-1);ctx.stroke();
+ ctx.strokeStyle=pants;ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-7,-28);ctx.lineTo(-10+stride,-7);ctx.stroke();ctx.beginPath();ctx.moveTo(7,-28);ctx.lineTo(10-stride,-7);ctx.stroke();
+ // torso
+ roundedRect(-15,-62,30,36,8,shirt,edge);
+ // belt
+ ctx.fillStyle='#f3cf74';ctx.fillRect(-14,-31,28,4);
+ // arms; attacking arm extends
+ ctx.lineWidth=9;ctx.strokeStyle=skin;
+ let extend=f.attack==='punch'?25:f.attack==='kick'?8:0;
+ ctx.beginPath();ctx.moveTo(-12,-55);ctx.lineTo(-19,-43);ctx.lineTo(-15,-35);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(12,-55);ctx.lineTo(18+extend,-49);ctx.lineTo(27+extend,-49);ctx.stroke();
+ ctx.fillStyle=skin;ctx.beginPath();ctx.arc(27+extend,-49,5,0,Math.PI*2);ctx.fill();
+ // head
+ ctx.fillStyle=skin;ctx.strokeStyle=edge;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-75,13,0,Math.PI*2);ctx.fill();ctx.stroke();
+ // hair/headband
+ ctx.fillStyle=f.player?'#171c2c':'#2b1724';ctx.beginPath();ctx.arc(0,-80,13,Math.PI,Math.PI*2);ctx.lineTo(12,-76);ctx.lineTo(-12,-76);ctx.closePath();ctx.fill();
+ if(f.player){ctx.fillStyle='#f3c76b';ctx.fillRect(-12,-78,24,4)}
+ // eye
+ ctx.fillStyle='#17151c';ctx.beginPath();ctx.arc(6,-75,2,0,Math.PI*2);ctx.fill();
+ if(f.block>0){ctx.strokeStyle='#72eaff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(5,-48,28,-1.3,1.1);ctx.stroke()}
+ if(f.ko){ctx.rotate(-Math.PI/2);ctx.globalAlpha=.8}
+ ctx.restore();
+}
+function draw(){
+ drawBackground();
+ // distant stage lights
+ for(let i=0;i<2;i++){let x=W*(i===0?.12:.88);ctx.fillStyle='#e7bd7050';ctx.fillRect(x-2,H*.2,4,ground-H*.2);ctx.fillStyle='#ffe7a3';ctx.beginPath();ctx.arc(x,H*.2,5,0,Math.PI*2);ctx.fill()}
+ if(player&&enemy){drawFighter(player);drawFighter(enemy)}
+ for(const p of particles){ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+}
+function loop(now){if(!last)last=now;let dt=Math.min((now-last)/1000,.035);last=now;update(dt);draw();if(gameState!=='closed')requestAnimationFrame(loop)}
+// Touch and click controls
+document.querySelectorAll('[data-hold]').forEach(btn=>{
+ const k=btn.dataset.hold;
+ const down=e=>{e.preventDefault();keys[k]=true;btn.classList.add('active')};
+ const up=e=>{e.preventDefault();keys[k]=false;btn.classList.remove('active')};
+ btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);btn.addEventListener('pointercancel',up);btn.addEventListener('pointerleave',up);
+});
+document.querySelectorAll('[data-action]').forEach(btn=>{
+ const act=()=>{btn.classList.add('active');action(btn.dataset.action);setTimeout(()=>btn.classList.remove('active'),120)};
+ btn.addEventListener('pointerdown',e=>{e.preventDefault();act()});
+});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowleft','a'].includes(k)){keys.left=true;e.preventDefault()}if(['arrowright','d'].includes(k)){keys.right=true;e.preventDefault()}if(k==='w'||k==='arrowup'||k===' '){action('jump');e.preventDefault()}if(k==='j')action('punch');if(k==='k')action('kick');if(k==='escape')togglePause()});
+window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(['arrowleft','a'].includes(k))keys.left=false;if(['arrowright','d'].includes(k))keys.right=false});
+document.querySelectorAll('[data-diff]').forEach(b=>b.addEventListener('click',()=>{difficulty=b.dataset.diff;document.querySelectorAll('[data-diff]').forEach(x=>x.classList.toggle('selected',x===b))}));
+startBtn.addEventListener('click',start);
+function togglePause(){if(gameState==='playing'){gameState='paused';pauseBtn.textContent='▶ RESUME';setMessage('PAUSED')}else if(gameState==='paused'){gameState='playing';pauseBtn.textContent='Ⅱ PAUSE';message.textContent=''}}
+pauseBtn.addEventListener('click',togglePause);
+restartBtn.addEventListener('click',()=>{startBtn.textContent='START FIGHT';document.querySelector('#menuCard h1').innerHTML='STREET <span>CLASH</span>';document.querySelector('#menuCard p').textContent='A pocket-sized 2D fighter. Beat your rival using punches, kicks, and well-timed jumps.';start()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&gameState==='playing')togglePause()});
+player=fighter(W*.28,true);enemy=fighter(W*.72,false);player.y=enemy.y=ground;draw();
+})();
+</script>
+</body>
+</html>
